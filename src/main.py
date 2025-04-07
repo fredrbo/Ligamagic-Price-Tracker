@@ -1,6 +1,7 @@
 from src.core.scraper import Scraper, Card
 from typing import List
 import logging
+import os
 
 def setup_logging() -> None:
     """Configura o logging da aplicação."""
@@ -22,10 +23,15 @@ def main() -> None:
         cards: List[Card] = scraper.scrape_data()
         
         # Exibe o total de cartas encontradas
-        logging.info(f"Total de cartas encontradas: {len(cards)}")
+        logging.info(f"Total cards found: {len(cards)}")
+        
+        # O arquivo JSON já foi salvo pelo método scrape_data
+        output_dir: str = "output"
+        if os.path.exists(output_dir):
+            logging.info(f"Cards were saved in directory: {output_dir}")
         
     except Exception as e:
-        logging.error(f"Erro durante a execução: {str(e)}")
+        logging.error(f"Error during execution: {str(e)}")
         raise
 
 if __name__ == "__main__":

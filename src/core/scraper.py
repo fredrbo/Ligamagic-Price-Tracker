@@ -11,15 +11,17 @@ from typing import List, Optional, Tuple
 import time
 import logging
 import os
+import json
+from datetime import datetime
 from src.config.settings import TARGET_URL, SELENIUM_HEADLESS
 from src.core.portal import Portal
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 @dataclass
 class Card:
-    quantidade: str
-    nome: str
-    preco: str
+    quantity: str
+    name: str
+    price: str
 
 class Scraper:
     def __init__(self) -> None:
@@ -76,7 +78,7 @@ class Scraper:
         """Extracts titles from all deckhome divs within the dks-search div."""
         deck_homes: List[WebElement] = dks_search.find_elements(By.CLASS_NAME, 'deckhome')
         deck_titles: List[str] = []
-        
+
         for deck in deck_homes:
             try:
                 title: Optional[str] = deck.get_attribute('title')
@@ -94,13 +96,13 @@ class Scraper:
         try:
             # Encontra a div picture dentro do deckhome
             picture_div: WebElement = deck.find_element(By.CLASS_NAME, 'picture')
-            self.logger.info(f"Clicando no deck: {deck.get_attribute('title')}")
+            self.logger.info(f"Clicking on deck: {deck.get_attribute('title')}")
             picture_div.click()
             time.sleep(5)  # Espera a página carregar
             return True
             
         except Exception as e:
-            self.logger.error(f"Erro ao clicar no deck: {str(e)}")
+            self.logger.error(f"Error clicking on deck: {str(e)}")
             return False
 
     def _go_back(self) -> bool:
@@ -110,7 +112,7 @@ class Scraper:
             time.sleep(3)  # Espera a página carregar
             return True
         except Exception as e:
-            self.logger.error(f"Erro ao voltar a página: {str(e)}")
+            self.logger.error(f"Error going back: {str(e)}")
             return False
 
     def login(self) -> bool:
@@ -144,22 +146,22 @@ class Scraper:
                     
                     # Cria um objeto Card com as informações
                     card_obj: Card = Card(
-                        quantidade=qty.text.strip(),
-                        nome=card.text.strip(),
-                        preco=price.text.strip()
+                        quantity=qty.text.strip(),
+                        name=card.text.strip(),
+                        price=price.text.strip()
                     )
                     
                     cards.append(card_obj)
-                    self.logger.info(f"Card encontrado: {card_obj.quantidade}x {card_obj.nome} - {card_obj.preco}")
+                    self.logger.info(f"Card found: {card_obj.quantity}x {card_obj.name} - {card_obj.price}")
                     
                 except Exception as e:
-                    self.logger.warning(f"Erro ao extrair informações de uma linha: {str(e)}")
+                    self.logger.warning(f"Error extracting card information: {str(e)}")
                     continue
             print(cards)
             return cards
             
         except Exception as e:
-            self.logger.error(f"Erro ao extrair cartas: {str(e)}")
+            self.logger.error(f"Error extracting cards: {str(e)}")
             return []
 
     def _extract_cards_from_deck(self, deck: WebElement) -> List[Card]:
@@ -167,7 +169,7 @@ class Scraper:
         try:
             # Clica no deck
             if not self._click_deck(deck):
-                self.logger.error("Não foi possível clicar no deck")
+                self.logger.error("Could not click on deck")
                 return []
             
             # Extrai as cartas
@@ -180,8 +182,35 @@ class Scraper:
             return cards
             
         except Exception as e:
-            self.logger.error(f"Erro ao extrair cartas do deck: {str(e)}")
+            self.logger.error(f"Error extracting cards from deck: {str(e)}")
             return []
+
+    def save_cards_to_json(self, cards: List[Card], filename: str = "cards.json") -> None:
+        """Salva os cards em um arquivo JSON com a data da extração."""
+        try:
+            # Cria o diretório de saída se não existir
+            output_dir: str = "output"
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Cria o caminho completo do arquivo
+            filepath: str = os.path.join(output_dir, filename)
+            
+            # Prepara os dados para salvar
+            data: dict = {
+                "extraction_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "total_cards": len(cards),
+                "cards": [asdict(card) for card in cards]
+            }
+            
+            # Salva os dados em JSON
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+            
+            self.logger.info(f"Cards saved successfully in: {filepath}")
+            
+        except Exception as e:
+            self.logger.error(f"Error saving cards to JSON: {str(e)}")
+            raise
 
     def scrape_data(self) -> List[Card]:
         """Performs data scraping from the LigaMagic website."""
@@ -204,12 +233,12 @@ class Scraper:
                 if title and title.startswith('Pool'):
                     pool_deck_titles.append(title)
             
-            self.logger.info(f"Total de decks Pool encontrados: {len(pool_deck_titles)}")
+            self.logger.info(f"Total Pool decks found: {len(pool_deck_titles)}")
             
             # Percorre todos os decks Pool pelos títulos
             for i, title in enumerate(pool_deck_titles, 1):
                 try:
-                    self.logger.info(f"Processando deck {i} de {len(pool_deck_titles)}: {title}")
+                    self.logger.info(f"Processing deck {i} of {len(pool_deck_titles)}: {title}")
                     
                     # Encontra o deck atual pelo título
                     dks_search = self._find_dks_search_div()
@@ -225,13 +254,17 @@ class Scraper:
                         # Extrai as cartas do deck atual
                         cards: List[Card] = self._extract_cards_from_deck(current_deck)
                         all_cards.extend(cards)
-                        self.logger.info(f"Total de cartas encontradas neste deck: {len(cards)}")
+                        self.logger.info(f"Total cards found in this deck: {len(cards)}")
                         
                 except Exception as e:
-                    self.logger.error(f"Erro ao processar deck {i}: {str(e)}")
+                    self.logger.error(f"Error processing deck {i}: {str(e)}")
                     continue
             
-            self.logger.info(f"Total de cartas encontradas em todos os decks: {len(all_cards)}")
+            self.logger.info(f"Total cards found in all decks: {len(all_cards)}")
+            
+            # Salva os cards em JSON
+            self.save_cards_to_json(all_cards)
+            
             return all_cards
             
         except Exception as e:
