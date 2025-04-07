@@ -19,12 +19,12 @@ class Scraper:
         self.portal = Portal(self.driver)
         
     def _setup_driver(self):
-        """Configura e retorna uma instância do WebDriver."""
+        """Configures and returns a WebDriver instance."""
         chrome_options = Options()
         if SELENIUM_HEADLESS:
             chrome_options.add_argument('--headless')
             
-        # Configurações adicionais para melhor compatibilidade
+        # Additional settings for better compatibility
         chrome_options.add_argument('--start-maximized')
         chrome_options.add_argument('--disable-notifications')
         chrome_options.add_argument('--disable-popup-blocking')
@@ -33,72 +33,72 @@ class Scraper:
         driver = webdriver.Chrome(service=service, options=chrome_options)
         return driver
         
-    def fazer_login(self):
-        """Realiza o login na plataforma."""
+    def login(self):
+        """Performs login on the platform."""
         email = os.getenv('LIGAMAGIC_EMAIL')
-        senha = os.getenv('LIGAMAGIC_SENHA')
+        password = os.getenv('LIGAMAGIC_SENHA')
         
-        if not email or not senha:
-            self.logger.error("Credenciais de login não encontradas no arquivo .env")
+        if not email or not password:
+            self.logger.error("Login credentials not found in .env file")
             return False
             
-        return self.portal.fazer_login(email, senha)
+        return self.portal.login(email, password)
         
     def scrape_data(self):
-        """Realiza a raspagem de dados do site da LigaMagic."""
-        self.logger.info("Iniciando raspagem de dados da LigaMagic...")
+        """Performs data scraping from the LigaMagic website."""
+        self.logger.info("Starting LigaMagic data scraping...")
         
         try:
-            # Acessa a página inicial
+            # Access the initial page
             self.driver.get(TARGET_URL)
-            self.logger.info("Página carregada com sucesso")
+            self.logger.info("Page loaded successfully")
             
-            # Realiza o login
-            if not self.fazer_login():
-                self.logger.error("Não foi possível fazer login. Abortando raspagem.")
+            # Perform login
+            if not self.login():
+                self.logger.error("Could not login. Aborting scraping.")
                 return []
                 
-            # Aguarda o carregamento da página após o login
+            # Wait for the page to load after login
             time.sleep(5)
             
-            # Localiza a tabela de decks
+            # Locate the decks table
             decks_table = self.driver.find_element(By.CLASS_NAME, 'decks')
             
-            # Encontra todos os decks na página
+            # Find all decks on the page
             decks = decks_table.find_elements(By.CLASS_NAME, 'deck')
             
             data = []
             for deck in decks:
                 try:
-                    # Extrai informações do deck
+                    # Extract deck information
                     deck_name = deck.find_element(By.CLASS_NAME, 'deck-name').text
                     deck_format = deck.find_element(By.CLASS_NAME, 'deck-format').text
                     deck_date = deck.find_element(By.CLASS_NAME, 'deck-date').text
                     
-                    # Adiciona os dados à lista
+                    # Add data to the list
                     data.append({
-                        'Nome do Deck': deck_name,
-                        'Formato': deck_format,
-                        'Data': deck_date
+                        'Deck Name': deck_name,
+                        'Format': deck_format,
+                        'Date': deck_date
                     })
                     
-                    self.logger.info(f"Deck extraído: {deck_name}")
+                    self.logger.info(f"Deck extracted: {deck_name}")
                     
                 except Exception as e:
-                    self.logger.warning(f"Erro ao extrair informações de um deck: {str(e)}")
+                    self.logger.warning(f"Error extracting deck information: {str(e)}")
                     continue
             
-            self.logger.info(f"Total de decks extraídos: {len(data)}")
+            self.logger.info(f"Total decks extracted: {len(data)}")
             return data
             
         except Exception as e:
-            self.logger.error(f"Erro durante a raspagem: {str(e)}")
+            self.logger.error(f"Error during scraping: {str(e)}")
             raise
             
         finally:
             self.driver.quit()
             
     def __del__(self):
-        """Garante que o driver seja fechado ao destruir a instância."""
+        """Ensures the driver is closed when the instance is destroyed."""
         if hasattr(self, 'driver'):
             self.driver.quit() 

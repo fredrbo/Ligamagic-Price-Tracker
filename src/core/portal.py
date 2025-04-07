@@ -10,54 +10,59 @@ class Portal:
         self.driver = driver
         self.logger = logging.getLogger(__name__)
         
-    def fazer_login(self, email, senha):
-        """Realiza o login na plataforma LigaMagic."""
+    def login(self, email, password):
+        """Performs login on the LigaMagic platform."""
         try:
-            self.logger.info("Iniciando processo de login...")
+            self.logger.info("Starting login process...")
             
-            # Aguarda o botão de login aparecer e clica nele
+            # Remove whitespace from the beginning and end of the password
+            password = password.strip()
+            
+            # Wait for the login button to appear and click it
             login_button = WebDriverWait(self.driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, '//*[@id="dropdownMenuLogin"]/div'))
             )
             login_button.click()
-            self.logger.info("Modal de login aberto")
+            self.logger.info("Login modal opened")
             
-            # Aguarda o modal de login aparecer
-            time.sleep(2)  # Pequena pausa para garantir que o modal esteja visível
+            # Wait for the login modal to appear
+            time.sleep(2)  # Small pause to ensure the modal is visible
             
-            # Preenche o email
+            # Fill in the email
             email_field = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.ID, "email"))
+                EC.presence_of_element_located((By.XPATH, '//*[@id="header-lnick"]'))
             )
             email_field.send_keys(email)
             
-            # Preenche a senha
-            senha_field = self.driver.find_element(By.ID, "senha")
-            senha_field.send_keys(senha)
+            # Fill in the password
+            password_field = self.driver.find_element(By.XPATH, '//*[@id="header-lsenha"]')
+            password_field.send_keys(password)
             
-            # Clica no botão de login
-            submit_button = self.driver.find_element(By.XPATH, "//button[@type='submit']")
-            submit_button.click()
+            # Click the specified link
+            login_link = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, '//*[@id="main-header"]/nav[1]/div/div[2]/div/div/div[1]/div/div[2]/form/div/ul/li[1]/a'))
+            )
+            login_link.click()
+            self.logger.info("Login link clicked")
             
-            self.logger.info("Tentativa de login realizada")
+            # Wait 5 seconds
+            time.sleep(5)
+            self.logger.info("5-second wait completed")
             
-            # Aguarda um momento para o login ser processado
-            time.sleep(3)
-            
-            # Verifica se o login foi bem sucedido
+            # Check if login was successful
             try:
-                # Verifica se o elemento de login ainda está presente (login falhou)
+                # Check if the login element is still present (login failed)
                 if self.driver.find_elements(By.XPATH, '//*[@id="dropdownMenuLogin"]/div'):
-                    self.logger.error("Falha no login - Credenciais inválidas ou erro no processo")
+                    self.logger.error("Login failed - Invalid credentials or process error")
                     return False
                 else:
-                    self.logger.info("Login realizado com sucesso!")
+                    self.logger.info("Login successful!")
                     return True
                     
             except Exception as e:
-                self.logger.error(f"Erro ao verificar status do login: {str(e)}")
+                self.logger.error(f"Error checking login status: {str(e)}")
                 return False
                 
         except Exception as e:
-            self.logger.error(f"Erro durante o processo de login: {str(e)}")
+            self.logger.error(f"Error during login process: {str(e)}")
             return False
