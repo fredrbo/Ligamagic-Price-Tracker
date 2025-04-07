@@ -1,10 +1,13 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.chrome.webdriver import WebDriver
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from typing import List, Optional, Tuple
 import time
 import logging
 import os
@@ -19,19 +22,19 @@ class Card:
     preco: str
 
 class Scraper:
-    def __init__(self):
-        self.logger = logging.getLogger(__name__)
-        self.driver = self._setup_driver()
-        self.portal = Portal(self.driver)
+    def __init__(self) -> None:
+        self.logger: logging.Logger = logging.getLogger(__name__)
+        self.driver: WebDriver = self._setup_driver()
+        self.portal: Portal = Portal(self.driver)
         
-    def _setup_driver(self):
+    def _setup_driver(self) -> WebDriver:
         """Configures and returns a WebDriver instance."""
-        chrome_options = Options()
+        chrome_options: Options = Options()
         if SELENIUM_HEADLESS:
             chrome_options.add_argument('--headless')
             
         # Usar o perfil padrão do Chrome
-        user_data_dir = os.path.expanduser('~') + '/AppData/Local/Google/Chrome/User Data'
+        user_data_dir: str = os.path.expanduser('~') + '/AppData/Local/Google/Chrome/User Data'
         chrome_options.add_argument(f'--user-data-dir={user_data_dir}')
         chrome_options.add_argument('--profile-directory=Default')
         
@@ -39,21 +42,21 @@ class Scraper:
         chrome_options.add_argument('--start-maximized')
         chrome_options.add_argument('--disable-notifications')
         
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=chrome_options)
+        service: Service = Service(ChromeDriverManager().install())
+        driver: WebDriver = webdriver.Chrome(service=service, options=chrome_options)
         
         return driver
 
-    def _navigate_to_page(self):
+    def _navigate_to_page(self) -> None:
         """Navigates to the target URL and waits for the page to load."""
         self.driver.get(TARGET_URL)
         self.logger.info("Page loaded successfully")
         time.sleep(2)  # Wait for initial page load
 
-    def _get_credentials(self):
+    def _get_credentials(self) -> Tuple[Optional[str], Optional[str]]:
         """Retrieves login credentials from environment variables."""
-        email = os.getenv('LIGAMAGIC_EMAIL')
-        password = os.getenv('LIGAMAGIC_SENHA')
+        email: Optional[str] = os.getenv('LIGAMAGIC_EMAIL')
+        password: Optional[str] = os.getenv('LIGAMAGIC_SENHA')
         
         if not email or not password:
             self.logger.error("Login credentials not found in .env file")
@@ -63,20 +66,20 @@ class Scraper:
         password = " " + password
         return email, password
 
-    def _find_dks_search_div(self):
+    def _find_dks_search_div(self) -> WebElement:
         """Finds and returns the dks-search div element."""
         return WebDriverWait(self.driver, 10).until(
             EC.presence_of_element_located((By.CLASS_NAME, 'dks-search'))
         )
 
-    def _extract_deck_titles(self, dks_search):
+    def _extract_deck_titles(self, dks_search: WebElement) -> List[str]:
         """Extracts titles from all deckhome divs within the dks-search div."""
-        deck_homes = dks_search.find_elements(By.CLASS_NAME, 'deckhome')
-        deck_titles = []
+        deck_homes: List[WebElement] = dks_search.find_elements(By.CLASS_NAME, 'deckhome')
+        deck_titles: List[str] = []
         
         for deck in deck_homes:
             try:
-                title = deck.get_attribute('title')
+                title: Optional[str] = deck.get_attribute('title')
                 if title and title.startswith('Pool'):
                     deck_titles.append(title)
                     self.logger.info(f"Found Pool deck: {title}")
@@ -86,11 +89,13 @@ class Scraper:
                 
         return deck_titles
 
-    def _click_deck(self, deck):
+    def _click_deck(self, deck: WebElement) -> bool:
         """Clicks on a specific deck."""
         try:
+            # Encontra a div picture dentro do deckhome
+            picture_div: WebElement = deck.find_element(By.CLASS_NAME, 'picture')
             self.logger.info(f"Clicando no deck: {deck.get_attribute('title')}")
-            deck.click()
+            picture_div.click()
             time.sleep(5)  # Espera a página carregar
             return True
             
@@ -98,7 +103,7 @@ class Scraper:
             self.logger.error(f"Erro ao clicar no deck: {str(e)}")
             return False
 
-    def _go_back(self):
+    def _go_back(self) -> bool:
         """Volta uma página no navegador."""
         try:
             self.driver.back()
@@ -108,35 +113,37 @@ class Scraper:
             self.logger.error(f"Erro ao voltar a página: {str(e)}")
             return False
 
-    def login(self):
+    def login(self) -> bool:
         """Performs login on the platform."""
+        email: Optional[str]
+        password: Optional[str]
         email, password = self._get_credentials()
         if not email or not password:
             return False
             
         return self.portal.login(email, password)
         
-    def _extract_cards(self):
+    def _extract_cards(self) -> List[Card]:
         """Extrai as informações das cartas do deck."""
         try:
             # Encontra o bloco principal do deck
-            pdeck_block = WebDriverWait(self.driver, 10).until(
+            pdeck_block: WebElement = WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.CLASS_NAME, 'pdeck-block'))
             )
             
             # Encontra todas as linhas do deck
-            deck_lines = pdeck_block.find_elements(By.CLASS_NAME, 'deck-line')
-            cards = []
+            deck_lines: List[WebElement] = pdeck_block.find_elements(By.CLASS_NAME, 'deck-line')
+            cards: List[Card] = []
             
             for line in deck_lines:
                 try:
                     # Verifica se a linha tem todos os elementos necessários
-                    qty = line.find_element(By.CLASS_NAME, 'deck-qty')
-                    card = line.find_element(By.CLASS_NAME, 'deck-card')
-                    price = line.find_element(By.CLASS_NAME, 'deck-price')
+                    qty: WebElement = line.find_element(By.CLASS_NAME, 'deck-qty')
+                    card: WebElement = line.find_element(By.CLASS_NAME, 'deck-card')
+                    price: WebElement = line.find_element(By.CLASS_NAME, 'deck-price')
                     
                     # Cria um objeto Card com as informações
-                    card_obj = Card(
+                    card_obj: Card = Card(
                         quantidade=qty.text.strip(),
                         nome=card.text.strip(),
                         preco=price.text.strip()
@@ -155,7 +162,7 @@ class Scraper:
             self.logger.error(f"Erro ao extrair cartas: {str(e)}")
             return []
 
-    def _extract_cards_from_deck(self, deck):
+    def _extract_cards_from_deck(self, deck: WebElement) -> List[Card]:
         """Extrai as cartas de um deck específico."""
         try:
             # Clica no deck
@@ -164,7 +171,7 @@ class Scraper:
                 return []
             
             # Extrai as cartas
-            cards = self._extract_cards()
+            cards: List[Card] = self._extract_cards()
             
             # Volta para a página inicial
             self._navigate_to_page()
@@ -176,10 +183,10 @@ class Scraper:
             self.logger.error(f"Erro ao extrair cartas do deck: {str(e)}")
             return []
 
-    def scrape_data(self):
+    def scrape_data(self) -> List[Card]:
         """Performs data scraping from the LigaMagic website."""
         self.logger.info("Starting LigaMagic data scraping...")
-        all_cards = []
+        all_cards: List[Card] = []
         
         try:
             # Navigate to the page
@@ -187,13 +194,13 @@ class Scraper:
             time.sleep(5)  # Wait for the page to load
             
             # Find the dks-search div and get all Pool decks
-            dks_search = self._find_dks_search_div()
-            deck_homes = dks_search.find_elements(By.CLASS_NAME, 'deckhome')
+            dks_search: WebElement = self._find_dks_search_div()
+            deck_homes: List[WebElement] = dks_search.find_elements(By.CLASS_NAME, 'deckhome')
             
             # Armazena os títulos dos decks Pool
-            pool_deck_titles = []
+            pool_deck_titles: List[str] = []
             for deck in deck_homes:
-                title = deck.get_attribute('title')
+                title: Optional[str] = deck.get_attribute('title')
                 if title and title.startswith('Pool'):
                     pool_deck_titles.append(title)
             
@@ -207,7 +214,7 @@ class Scraper:
                     # Encontra o deck atual pelo título
                     dks_search = self._find_dks_search_div()
                     deck_homes = dks_search.find_elements(By.CLASS_NAME, 'deckhome')
-                    current_deck = None
+                    current_deck: Optional[WebElement] = None
                     
                     for deck in deck_homes:
                         if deck.get_attribute('title') == title:
@@ -216,7 +223,7 @@ class Scraper:
                     
                     if current_deck:
                         # Extrai as cartas do deck atual
-                        cards = self._extract_cards_from_deck(current_deck)
+                        cards: List[Card] = self._extract_cards_from_deck(current_deck)
                         all_cards.extend(cards)
                         self.logger.info(f"Total de cartas encontradas neste deck: {len(cards)}")
                         
@@ -234,7 +241,7 @@ class Scraper:
         finally:
             self.driver.quit()
             
-    def __del__(self):
+    def __del__(self) -> None:
         """Ensures the driver is closed when the instance is destroyed."""
         if hasattr(self, 'driver'):
             self.driver.quit() 

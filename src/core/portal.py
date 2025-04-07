@@ -2,22 +2,23 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.chrome.webdriver import WebDriver
 import logging
 import time
 
 class Portal:
-    def __init__(self, driver):
-        self.driver = driver
-        self.logger = logging.getLogger(__name__)
+    def __init__(self, driver: WebDriver) -> None:
+        self.driver: WebDriver = driver
+        self.logger: logging.Logger = logging.getLogger(__name__)
         
-    def login(self, email, password):
+    def login(self, email: str, password: str) -> bool:
         """Performs login on the LigaMagic platform."""
         try:
             self.logger.info("Starting login process...")
             
-            
             # Wait for the login button to appear and click it
-            login_button = WebDriverWait(self.driver, 10).until(
+            login_button: WebElement = WebDriverWait(self.driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, '//*[@id="dropdownMenuLogin"]/div'))
             )
             login_button.click()
@@ -27,17 +28,17 @@ class Portal:
             time.sleep(2)  # Small pause to ensure the modal is visible
             
             # Fill in the email
-            email_field = WebDriverWait(self.driver, 10).until(
+            email_field: WebElement = WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, '//*[@id="header-lnick"]'))
             )
             email_field.send_keys(email)
             
             # Fill in the password
-            password_field = self.driver.find_element(By.XPATH, '//*[@id="header-lsenha"]')
+            password_field: WebElement = self.driver.find_element(By.XPATH, '//*[@id="header-lsenha"]')
             password_field.send_keys(password)
             
             # Click the specified link
-            login_link = WebDriverWait(self.driver, 10).until(
+            login_link: WebElement = WebDriverWait(self.driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, '//*[@id="main-header"]/nav[1]/div/div[2]/div/div/div[1]/div/div[2]/form/div/ul/li[1]/a'))
             )
             login_link.click()
@@ -50,7 +51,8 @@ class Portal:
             # Check if login was successful
             try:
                 # Check if the login element is still present (login failed)
-                if self.driver.find_elements(By.XPATH, '//*[@id="dropdownMenuLogin"]/div'):
+                login_elements: list[WebElement] = self.driver.find_elements(By.XPATH, '//*[@id="dropdownMenuLogin"]/div')
+                if login_elements:
                     self.logger.error("Login failed - Invalid credentials or process error")
                     return False
                 else:
