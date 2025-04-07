@@ -15,8 +15,6 @@ class Portal:
         try:
             self.logger.info("Starting login process...")
             
-            # Remove whitespace from the beginning and end of the password
-            password = password.strip()
             
             # Wait for the login button to appear and click it
             login_button = WebDriverWait(self.driver, 10).until(

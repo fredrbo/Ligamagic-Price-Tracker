@@ -21,7 +21,7 @@ def main():
         
         # Exporta para Excel
         excel_handler = ExcelHandler()
-        excel_handler.export_to_excel(data)
+        # excel_handler.export_to_excel(data)
         
         logger.info("Processo concluído com sucesso!")
         

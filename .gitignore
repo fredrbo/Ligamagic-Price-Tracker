@@ -33,6 +33,7 @@ env/
 *.swo
 .DS_Store
 
+chrome_profile/
 # Arquivos de log
 logs/
 *.log
