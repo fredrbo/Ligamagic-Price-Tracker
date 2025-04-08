@@ -55,19 +55,6 @@ class Scraper:
         self.logger.info("Page loaded successfully")
         time.sleep(2)  # Wait for initial page load
 
-    def _get_credentials(self) -> Tuple[Optional[str], Optional[str]]:
-        """Retrieves login credentials from environment variables."""
-        email: Optional[str] = os.getenv('LIGAMAGIC_EMAIL')
-        password: Optional[str] = os.getenv('LIGAMAGIC_SENHA')
-        
-        if not email or not password:
-            self.logger.error("Login credentials not found in .env file")
-            return None, None
-            
-        # Add a space before the password
-        password = " " + password
-        return email, password
-
     def _find_dks_search_div(self) -> WebElement:
         """Finds and returns the dks-search div element."""
         return WebDriverWait(self.driver, 10).until(
