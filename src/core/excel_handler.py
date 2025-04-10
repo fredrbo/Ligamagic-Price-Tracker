@@ -127,7 +127,7 @@ class ExcelHandler:
             raise
             
     def _apply_colors(self, current_date: str) -> None:
-        """Aplica as cores nas células baseado na comparação de valores."""
+        """Aplica as cores nas células baseado na comparação de valores, mantendo cores anteriores."""
         try:
             # Carrega o arquivo Excel
             wb = load_workbook(self.excel_file)
@@ -135,38 +135,63 @@ class ExcelHandler:
             
             # Encontra o índice da coluna da data atual
             current_date_col = None
+            date_columns = []
+            
+            # Identifica todas as colunas de data e a coluna atual
             for cell in ws[1]:
                 if cell.value == current_date:
                     current_date_col = cell.column
-                    break
+                    date_columns.append((cell.column, cell.value))
+                elif isinstance(cell.value, str) and cell.value != 'Nome da Carta' and cell.value != 'Quantidade':
+                    date_columns.append((cell.column, cell.value))
             
             if current_date_col is None:
                 raise ValueError(f"Column for date {current_date} not found")
             
-            # Para cada linha (começando da segunda, pois a primeira é cabeçalho)
-            for row in range(2, ws.max_row + 1):
-                current_cell = ws.cell(row=row, column=current_date_col)
-                previous_cell = ws.cell(row=row, column=current_date_col - 1)
+            # Ordena as colunas de data pela posição (para garantir a ordem cronológica)
+            date_columns.sort()
+            
+            # Para cada coluna de data (exceto a primeira), aplica as cores comparando com a anterior
+            for i in range(1, len(date_columns)):
+                col_num, col_date = date_columns[i]
+                prev_col_num = date_columns[i-1][0]
                 
-                # Se a célula anterior não tem valor, pula
-                if previous_cell.value is None:
+                # Se for a coluna atual ou se a coluna anterior for 'Quantidade', pula
+                if col_date == current_date or ws.cell(row=1, column=prev_col_num).value == 'Quantidade':
                     continue
-                
-                # Se a célula atual não tem valor, pula
-                if current_cell.value is None:
-                    continue
-                
-                # Verifica se a coluna anterior é a coluna de quantidade
-                previous_header = ws.cell(row=1, column=previous_cell.column).value
-                if previous_header == 'Quantidade':
-                    continue
-                
-                # Compara os valores
-                if current_cell.value > previous_cell.value:
-                    current_cell.fill = self.green_fill
-                elif current_cell.value < previous_cell.value:
-                    current_cell.fill = self.red_fill
-                # Se for igual, mantém o fundo branco (padrão)
+                    
+                # Para cada linha (começando da segunda)
+                for row in range(2, ws.max_row + 1):
+                    current_cell = ws.cell(row=row, column=col_num)
+                    previous_cell = ws.cell(row=row, column=prev_col_num)
+                    
+                    # Se algum dos valores for None, pula
+                    if current_cell.value is None or previous_cell.value is None:
+                        continue
+                    
+                    # Compara os valores
+                    if current_cell.value > previous_cell.value:
+                        current_cell.fill = self.green_fill
+                    elif current_cell.value < previous_cell.value:
+                        current_cell.fill = self.red_fill
+                    # Se for igual, mantém o fundo branco (padrão)
+            
+            # Agora aplica as cores para a coluna atual (última)
+            current_col_num = current_date_col
+            prev_col_num = date_columns[-2][0] if len(date_columns) > 1 else None
+            
+            if prev_col_num:
+                for row in range(2, ws.max_row + 1):
+                    current_cell = ws.cell(row=row, column=current_col_num)
+                    previous_cell = ws.cell(row=row, column=prev_col_num)
+                    
+                    if current_cell.value is None or previous_cell.value is None:
+                        continue
+                    
+                    if current_cell.value > previous_cell.value:
+                        current_cell.fill = self.green_fill
+                    elif current_cell.value < previous_cell.value:
+                        current_cell.fill = self.red_fill
             
             # Salva as alterações
             wb.save(self.excel_file)
@@ -174,6 +199,53 @@ class ExcelHandler:
         except Exception as e:
             self.logger.error(f"Error applying colors: {str(e)}")
             raise
+            """Aplica as cores nas células baseado na comparação de valores."""
+            try:
+                # Carrega o arquivo Excel
+                wb = load_workbook(self.excel_file)
+                ws = wb.active
+                
+                # Encontra o índice da coluna da data atual
+                current_date_col = None
+                for cell in ws[1]:
+                    if cell.value == current_date:
+                        current_date_col = cell.column
+                        break
+                
+                if current_date_col is None:
+                    raise ValueError(f"Column for date {current_date} not found")
+                
+                # Para cada linha (começando da segunda, pois a primeira é cabeçalho)
+                for row in range(2, ws.max_row + 1):
+                    current_cell = ws.cell(row=row, column=current_date_col)
+                    previous_cell = ws.cell(row=row, column=current_date_col - 1)
+                    
+                    # Se a célula anterior não tem valor, pula
+                    if previous_cell.value is None:
+                        continue
+                    
+                    # Se a célula atual não tem valor, pula
+                    if current_cell.value is None:
+                        continue
+                    
+                    # Verifica se a coluna anterior é a coluna de quantidade
+                    previous_header = ws.cell(row=1, column=previous_cell.column).value
+                    if previous_header == 'Quantidade':
+                        continue
+                    
+                    # Compara os valores
+                    if current_cell.value > previous_cell.value:
+                        current_cell.fill = self.green_fill
+                    elif current_cell.value < previous_cell.value:
+                        current_cell.fill = self.red_fill
+                    # Se for igual, mantém o fundo branco (padrão)
+                
+                # Salva as alterações
+                wb.save(self.excel_file)
+                
+            except Exception as e:
+                self.logger.error(f"Error applying colors: {str(e)}")
+                raise
             
     def _apply_alignment(self) -> None:
         """Aplica o alinhamento centralizado em todas as colunas, exceto 'Nome da Carta'."""
