@@ -18,6 +18,12 @@ class ExcelHandler:
         self.red_fill = PatternFill(start_color='FFB6C1', end_color='FFB6C1', fill_type='solid')
         self.center_alignment = Alignment(horizontal='center', vertical='center')
         
+    def _to_float(value):
+        try:
+            return float(str(value).replace(',', '.'))
+        except (ValueError, TypeError):
+            return 0
+    
     def read_json_file(self, filepath: str = "output/cards.json") -> Dict[str, Any]:
         """Lê o arquivo JSON com os dados das cartas."""
         try:
@@ -54,6 +60,7 @@ class ExcelHandler:
         return ws.max_column + 1, None
             
     def _check_date_exists(self, ws, current_date: str) -> bool:
+        return False
         """Verifica se a data já existe no Excel."""
         for cell in ws[1]:  # Verifica apenas o cabeçalho
             if cell.value == current_date:
@@ -188,9 +195,17 @@ class ExcelHandler:
                     if current_cell.value is None or previous_cell.value is None:
                         continue
                     
-                    if current_cell.value > previous_cell.value:
+                    if(isinstance(current_cell.value, str)):
+                        current_cell.value = current_cell.value.replace(',', '.')
+                        current_cell.value = float(current_cell.value)
+                  
+                    if(isinstance(previous_cell.value, str)):
+                        previous_cell.value = previous_cell.value.replace(',', '.')
+                        previous_cell.value = float(previous_cell.value)
+
+                    if current_cell.value >  previous_cell.value:
                         current_cell.fill = self.green_fill
-                    elif current_cell.value < previous_cell.value:
+                    elif current_cell.value <  previous_cell.value:
                         current_cell.fill = self.red_fill
             
             # Salva as alterações
